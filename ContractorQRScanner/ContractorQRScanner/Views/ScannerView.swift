@@ -216,9 +216,8 @@ struct ScannerView: View {
     }
 
     private func accessGrantedView(_ result: ValidationResponse) -> some View {
+        ScrollView {
         VStack(spacing: 24) {
-            Spacer()
-
             ZStack {
                 Circle()
                     .fill(AppTheme.success.opacity(0.15))
@@ -240,6 +239,66 @@ struct ScannerView: View {
 
             if let contractor = result.contractor {
                 VStack(spacing: 16) {
+                    // Contractor Photo for Visual Verification
+                    if let photoUrl = contractor.photoUrl,
+                       !photoUrl.isEmpty,
+                       let data = Data(base64Encoded: photoUrl
+                           .replacingOccurrences(of: "data:image/jpeg;base64,", with: "")
+                           .replacingOccurrences(of: "data:image/png;base64,", with: "")
+                           .replacingOccurrences(of: "data:image/jpg;base64,", with: "")),
+                       let uiImage = UIImage(data: data) {
+
+                        VStack(spacing: 8) {
+                            Text("VERIFY IDENTITY")
+                                .font(.caption.weight(.bold))
+                                .foregroundColor(AppTheme.primary)
+                                .tracking(1.5)
+
+                            ZStack(alignment: .bottomTrailing) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 100, height: 100)
+                                    .clipShape(Circle())
+                                    .overlay(
+                                        Circle()
+                                            .strokeBorder(AppTheme.success, lineWidth: 3)
+                                    )
+                                    .shadow(color: AppTheme.success.opacity(0.4), radius: 10)
+
+                                ZStack {
+                                    Circle()
+                                        .fill(AppTheme.success)
+                                        .frame(width: 28, height: 28)
+
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                        }
+                        .padding(.bottom, 4)
+                    } else {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(AppTheme.warning)
+                                .font(.caption)
+                            Text("No photo on file")
+                                .font(.caption.weight(.medium))
+                                .foregroundColor(AppTheme.warning)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(AppTheme.warning.opacity(0.1))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .strokeBorder(AppTheme.warning.opacity(0.3), lineWidth: 1)
+                                )
+                        )
+                    }
+
                     DetailRow(icon: "person.fill", label: "Name", value: contractor.fullName)
 
                     if let company = contractor.company {
@@ -262,8 +321,9 @@ struct ScannerView: View {
                 .padding(.horizontal, 20)
             }
 
-            Spacer()
             scanNextButton
+        }
+        .padding(.top, 20)
         }
     }
 

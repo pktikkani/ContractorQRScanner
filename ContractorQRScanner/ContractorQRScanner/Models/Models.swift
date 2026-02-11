@@ -17,6 +17,12 @@ struct ContractorInfo: Codable {
     let fullName: String
     let company: String?
     let email: String?
+    let photoUrl: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id, fullName, company, email
+        case photoUrl = "photo_url"
+    }
 }
 
 struct ValidationRequest: Codable {
