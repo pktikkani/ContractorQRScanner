@@ -56,6 +56,16 @@ struct QRScannerCamera: UIViewRepresentable {
         context.coordinator.previewLayer?.frame = uiView.bounds
     }
 
+    @MainActor
+    static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            coordinator.session?.stopRunning()
+        }
+        coordinator.previewLayer?.removeFromSuperlayer()
+        coordinator.session = nil
+        coordinator.previewLayer = nil
+    }
+
     class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
         nonisolated(unsafe) var onCodeScanned: (@MainActor (String) -> Void)
         nonisolated(unsafe) var session: AVCaptureSession?
