@@ -5,6 +5,12 @@ struct ScannerView: View {
     @State private var validationResult: ValidationResponse?
     @State private var errorMessage: String?
     @State private var scannerActive = true
+    @State private var scanMode: String = "entry" // "entry" or "exit"
+    @StateObject private var networkMonitor = NetworkMonitor.shared
+    @State private var showEmergencyOverride = false
+    @State private var overrideReason = ""
+    @State private var overrideGranted = false
+    @ObservedObject private var languageManager = LanguageManager.shared
 
     enum ScanState {
         case scanning
@@ -21,6 +27,59 @@ struct ScannerView: View {
                 header
                     .padding(.bottom, 8)
 
+                // Entry/Exit mode toggle
+                HStack(spacing: 0) {
+                    Button(action: { scanMode = "entry" }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.right.circle.fill")
+                            Text("Entry")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(scanMode == "entry" ? AppTheme.success : Color.clear)
+                        .foregroundColor(scanMode == "entry" ? .white : AppTheme.textSecondary)
+                    }
+
+                    Button(action: { scanMode = "exit" }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.left.circle.fill")
+                            Text("Exit")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(scanMode == "exit" ? AppTheme.danger : Color.clear)
+                        .foregroundColor(scanMode == "exit" ? .white : AppTheme.textSecondary)
+                    }
+                }
+                .background(AppTheme.cardBackground)
+                .cornerRadius(12)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 8)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Scan mode: \(scanMode == "entry" ? "Entry" : "Exit")")
+
+                // Network status indicator
+                if !networkMonitor.isConnected {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.slash")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.warning)
+                        Text("Offline — Using cached validations")
+                            .font(.caption.weight(.medium))
+                            .foregroundColor(AppTheme.warning)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .background(AppTheme.warning.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
+                    .accessibilityLabel("Network status: Offline, using cached validations")
+                }
+
                 switch scanState {
                 case .scanning:
                     scanningView
@@ -33,7 +92,42 @@ struct ScannerView: View {
                 }
 
                 Spacer(minLength: 0)
+
+                // Emergency override button
+                Button(action: { showEmergencyOverride = true }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.shield.fill")
+                        Text("Emergency Override")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundColor(AppTheme.warning)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 20)
+                    .background(AppTheme.warning.opacity(0.1))
+                    .cornerRadius(10)
+                }
+                .padding(.bottom, 16)
+                .accessibilityLabel("Emergency Override")
+                .accessibilityHint("Manually grant or deny access without QR scan")
             }
+        }
+        .sheet(isPresented: $showEmergencyOverride) {
+            EmergencyOverrideSheet(
+                onSubmit: { granted, reason in
+                    let entry = ScanHistoryEntry(
+                        id: UUID(),
+                        timestamp: Date(),
+                        contractorName: "Emergency Override",
+                        company: nil,
+                        email: nil,
+                        result: granted ? "granted" : "denied",
+                        reason: "OVERRIDE: \(reason)"
+                    )
+                    ScanHistoryManager.shared.addEntry(entry)
+                    showEmergencyOverride = false
+                },
+                onCancel: { showEmergencyOverride = false }
+            )
         }
     }
 
@@ -51,6 +145,7 @@ struct ScannerView: View {
                     .font(.title2.weight(.semibold))
                     .foregroundColor(.white)
             }
+            .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("Access Scanner")
@@ -69,6 +164,7 @@ struct ScannerView: View {
                     .fill(scanState == .scanning ? AppTheme.success : AppTheme.primary)
                     .frame(width: 8, height: 8)
                     .shadow(color: (scanState == .scanning ? AppTheme.success : AppTheme.primary).opacity(0.8), radius: 4)
+                    .accessibilityHidden(true)
 
                 Text(scanState == .scanning ? "Ready" : "Busy")
                     .font(.caption2.weight(.semibold))
@@ -80,6 +176,22 @@ struct ScannerView: View {
                 Capsule()
                     .fill((scanState == .scanning ? AppTheme.success : AppTheme.primary).opacity(0.15))
             )
+            .accessibilityLabel("Scanner status: \(scanState == .scanning ? "Ready" : "Busy")")
+
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    languageManager.toggleLanguage()
+                }
+            }) {
+                Text(languageManager.isArabic ? "EN" : "AR")
+                    .font(.caption2.weight(.bold))
+                    .foregroundColor(.white)
+                    .frame(width: 36, height: 28)
+                    .background(AppTheme.primaryGradient)
+                    .cornerRadius(8)
+            }
+            .accessibilityLabel("Switch language")
+            .accessibilityHint("Currently \(languageManager.isArabic ? "Arabic" : "English")")
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -236,6 +348,7 @@ struct ScannerView: View {
             Text("ACCESS GRANTED")
                 .font(.system(size: 32, weight: .black))
                 .foregroundColor(AppTheme.success)
+                .accessibilityAddTraits(.isHeader)
 
             if let contractor = result.contractor {
                 VStack(spacing: 16) {
@@ -283,10 +396,12 @@ struct ScannerView: View {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(AppTheme.warning)
                                 .font(.caption)
+                                .accessibilityHidden(true)
                             Text("No photo on file")
                                 .font(.caption.weight(.medium))
                                 .foregroundColor(AppTheme.warning)
                         }
+                        .accessibilityLabel("Warning: No photo on file for identity verification")
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                         .background(
@@ -349,6 +464,7 @@ struct ScannerView: View {
             Text("ACCESS DENIED")
                 .font(.system(size: 32, weight: .black))
                 .foregroundColor(AppTheme.danger)
+                .accessibilityAddTraits(.isHeader)
 
             if let reason = result.reason {
                 Text(reason)
@@ -388,6 +504,8 @@ struct ScannerView: View {
             .background(AppTheme.primaryGradient)
             .cornerRadius(14)
         }
+        .accessibilityLabel("Scan Next")
+        .accessibilityHint("Double tap to scan another QR code")
         .padding(.horizontal, 20)
         .padding(.bottom, 20)
     }
@@ -436,6 +554,8 @@ struct ScannerView: View {
                 .background(AppTheme.primaryGradient)
                 .cornerRadius(14)
             }
+            .accessibilityLabel("Try Again")
+            .accessibilityHint("Double tap to retry scanning")
             .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
@@ -449,9 +569,21 @@ struct ScannerView: View {
 
         Task {
             do {
-                let result = try await APIClient.shared.validateQRCode(qrData: code)
+                let result = try await APIClient.shared.validateQRCode(qrData: code, scanMode: scanMode)
                 validationResult = result
                 scanState = .result
+
+                // Cache granted results for offline use
+                if result.isGranted, let contractor = result.contractor {
+                    OfflineValidationCache.shared.cacheGrantedValidation(
+                        contractorId: contractor.id,
+                        response: result
+                    )
+                }
+
+                // Save to scan history
+                let historyEntry = ScanHistoryEntry(from: result)
+                ScanHistoryManager.shared.addEntry(historyEntry)
 
                 // Auto-reset after 8 seconds
                 try? await Task.sleep(nanoseconds: 8_000_000_000)
@@ -459,12 +591,26 @@ struct ScannerView: View {
                     resetScanner()
                 }
             } catch {
-                errorMessage = error.localizedDescription
-                scanState = .error
+                // Attempt offline validation before showing error
+                if let offlineResult = OfflineValidationCache.shared.attemptOfflineValidation(qrData: code) {
+                    validationResult = offlineResult
+                    scanState = .result
 
-                try? await Task.sleep(nanoseconds: 5_000_000_000)
-                if scanState == .error {
-                    resetScanner()
+                    let historyEntry = ScanHistoryEntry(from: offlineResult)
+                    ScanHistoryManager.shared.addEntry(historyEntry)
+
+                    try? await Task.sleep(nanoseconds: 8_000_000_000)
+                    if scanState == .result {
+                        resetScanner()
+                    }
+                } else {
+                    errorMessage = error.localizedDescription
+                    scanState = .error
+
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                    if scanState == .error {
+                        resetScanner()
+                    }
                 }
             }
         }
@@ -498,6 +644,7 @@ struct DetailRow: View {
                     .font(.caption)
                     .foregroundColor(AppTheme.primary)
             }
+            .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(label)
@@ -510,6 +657,8 @@ struct DetailRow: View {
 
             Spacer()
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }
 
@@ -533,6 +682,115 @@ struct ScanningLine: View {
                         offset = geo.size.height - 2
                     }
                 }
+        }
+    }
+}
+
+// MARK: - Emergency Override Sheet
+
+struct EmergencyOverrideSheet: View {
+    let onSubmit: (Bool, String) -> Void
+    let onCancel: () -> Void
+
+    @State private var reason = ""
+    @FocusState private var reasonFocused: Bool
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AppTheme.background.ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Warning icon
+                        ZStack {
+                            Circle()
+                                .fill(AppTheme.warning.opacity(0.15))
+                                .frame(width: 80, height: 80)
+
+                            Image(systemName: "exclamationmark.shield.fill")
+                                .font(.system(size: 36))
+                                .foregroundColor(AppTheme.warning)
+                        }
+                        .padding(.top, 8)
+
+                        Text("Emergency Override")
+                            .font(.title2.weight(.bold))
+                            .foregroundColor(AppTheme.textPrimary)
+
+                        Text("Manually grant or deny access without a QR code scan. This action will be logged in the audit trail.")
+                            .font(.subheadline)
+                            .foregroundColor(AppTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 16)
+
+                        // Reason input
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Reason (required)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(AppTheme.textSecondary)
+
+                            TextEditor(text: $reason)
+                                .focused($reasonFocused)
+                                .frame(minHeight: 100)
+                                .padding(12)
+                                .background(AppTheme.cardBackground)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .strokeBorder(AppTheme.primary.opacity(0.3), lineWidth: 1)
+                                )
+                                .foregroundColor(AppTheme.textPrimary)
+                        }
+                        .padding(.horizontal, 4)
+
+                        // Action buttons
+                        VStack(spacing: 12) {
+                            Button {
+                                onSubmit(true, reason)
+                            } label: {
+                                HStack {
+                                    Image(systemName: "checkmark.shield.fill")
+                                    Text("Grant Access")
+                                }
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(AppTheme.success)
+                                .cornerRadius(14)
+                            }
+                            .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .opacity(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+
+                            Button {
+                                onSubmit(false, reason)
+                            } label: {
+                                HStack {
+                                    Image(systemName: "xmark.shield.fill")
+                                    Text("Deny Access")
+                                }
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(AppTheme.danger)
+                                .cornerRadius(14)
+                            }
+                            .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .opacity(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") { onCancel() }
+                        .foregroundColor(AppTheme.primary)
+                }
+            }
         }
     }
 }

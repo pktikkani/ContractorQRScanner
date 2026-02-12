@@ -4,14 +4,14 @@ class APIClient {
     static let shared = APIClient()
     private let baseURL = AppConfig.apiBaseURL
 
-    func validateQRCode(qrData: String) async throws -> ValidationResponse {
+    func validateQRCode(qrData: String, scanMode: String = "entry") async throws -> ValidationResponse {
         let url = URL(string: "\(baseURL)/api/v1/qr/validate")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 10
 
-        let body = ValidationRequest(qrData: qrData)
+        let body = ValidationRequest(qrData: qrData, scanMode: scanMode)
         request.httpBody = try JSONEncoder().encode(body)
 
         let (data, response) = try await URLSession.shared.data(for: request)

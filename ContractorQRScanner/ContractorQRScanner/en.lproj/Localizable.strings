@@ -1,0 +1,66 @@
+/* ContractorQRScannerApp.swift */
+"Scanner" = "Scanner";
+"History" = "History";
+"Update Required" = "Update Required";
+"A newer version of this app is required to continue. Please update to the latest version." = "A newer version of this app is required to continue. Please update to the latest version.";
+"Update Now" = "Update Now";
+
+/* ScannerView.swift */
+"Entry" = "Entry";
+"Exit" = "Exit";
+"Offline — Using cached validations" = "Offline — Using cached validations";
+"Emergency Override" = "Emergency Override";
+"Access Scanner" = "Access Scanner";
+"Scan contractor QR codes for entry" = "Scan contractor QR codes for entry";
+"Ready" = "Ready";
+"Busy" = "Busy";
+"Position QR code within the frame" = "Position QR code within the frame";
+"Validating Access..." = "Validating Access...";
+"Checking permissions and schedule" = "Checking permissions and schedule";
+"ACCESS GRANTED" = "ACCESS GRANTED";
+"VERIFY IDENTITY" = "VERIFY IDENTITY";
+"No photo on file" = "No photo on file";
+"ACCESS DENIED" = "ACCESS DENIED";
+"Scan Next" = "Scan Next";
+"Validation Failed" = "Validation Failed";
+"Try Again" = "Try Again";
+"Name" = "Name";
+"Company" = "Company";
+"Email" = "Email";
+
+/* EmergencyOverrideSheet */
+"Manually grant or deny access without a QR code scan. This action will be logged in the audit trail." = "Manually grant or deny access without a QR code scan. This action will be logged in the audit trail.";
+"Reason (required)" = "Reason (required)";
+"Grant Access" = "Grant Access";
+"Deny Access" = "Deny Access";
+"Cancel" = "Cancel";
+
+/* HistoryView.swift */
+"Scan History" = "Scan History";
+"scans recorded" = "scans recorded";
+"Clear History" = "Clear History";
+"Clear All History" = "Clear All History";
+"This will permanently delete all scan history." = "This will permanently delete all scan history.";
+"Delete All" = "Delete All";
+"Search by name, company..." = "Search by name, company...";
+"All" = "All";
+"Granted" = "Granted";
+"Denied" = "Denied";
+"results" = "results";
+"No Scans Yet" = "No Scans Yet";
+"No Results" = "No Results";
+"Scan history will appear here after your first QR code scan." = "Scan history will appear here after your first QR code scan.";
+"Try adjusting your search or filter." = "Try adjusting your search or filter.";
+
+/* Login / Site Selection */
+"Guard Login" = "Guard Login";
+"CAMS Scanner" = "CAMS Scanner";
+"Sign In" = "Sign In";
+"Select Site" = "Select Site";
+"Search sites..." = "Search sites...";
+"Camera Permission Required" = "Camera Permission Required";
+"This app needs camera access to scan QR codes. Please grant camera permission to continue." = "This app needs camera access to scan QR codes. Please grant camera permission to continue.";
+"Grant Permission" = "Grant Permission";
+"Change Site" = "Change Site";
+"Logout" = "Logout";
+"Menu" = "Menu";

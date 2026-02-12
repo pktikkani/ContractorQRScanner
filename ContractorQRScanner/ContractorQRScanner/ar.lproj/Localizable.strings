@@ -1,0 +1,66 @@
+/* ContractorQRScannerApp.swift */
+"Scanner" = "الماسح";
+"History" = "السجل";
+"Update Required" = "تحديث مطلوب";
+"A newer version of this app is required to continue. Please update to the latest version." = "يلزم وجود إصدار أحدث من هذا التطبيق للمتابعة. يرجى التحديث إلى أحدث إصدار.";
+"Update Now" = "حدّث الآن";
+
+/* ScannerView.swift */
+"Entry" = "دخول";
+"Exit" = "خروج";
+"Offline — Using cached validations" = "غير متصل — استخدام عمليات التحقق المخزنة";
+"Emergency Override" = "تجاوز الطوارئ";
+"Access Scanner" = "ماسح الوصول";
+"Scan contractor QR codes for entry" = "مسح رموز QR للمقاول للدخول";
+"Ready" = "جاهز";
+"Busy" = "مشغول";
+"Position QR code within the frame" = "ضع رمز QR داخل الإطار";
+"Validating Access..." = "جارٍ التحقق من الوصول...";
+"Checking permissions and schedule" = "التحقق من الأذونات والجدول";
+"ACCESS GRANTED" = "تم منح الوصول";
+"VERIFY IDENTITY" = "تحقق من الهوية";
+"No photo on file" = "لا توجد صورة في الملف";
+"ACCESS DENIED" = "تم رفض الوصول";
+"Scan Next" = "مسح التالي";
+"Validation Failed" = "فشل التحقق";
+"Try Again" = "حاول مرة أخرى";
+"Name" = "الاسم";
+"Company" = "الشركة";
+"Email" = "البريد الإلكتروني";
+
+/* EmergencyOverrideSheet */
+"Manually grant or deny access without a QR code scan. This action will be logged in the audit trail." = "منح أو رفض الوصول يدويًا بدون مسح رمز QR. سيتم تسجيل هذا الإجراء في سجل التدقيق.";
+"Reason (required)" = "السبب (مطلوب)";
+"Grant Access" = "منح الوصول";
+"Deny Access" = "رفض الوصول";
+"Cancel" = "إلغاء";
+
+/* HistoryView.swift */
+"Scan History" = "سجل المسح";
+"scans recorded" = "عمليات مسح مسجلة";
+"Clear History" = "مسح السجل";
+"Clear All History" = "مسح كل السجل";
+"This will permanently delete all scan history." = "سيتم حذف سجل المسح بالكامل نهائيًا.";
+"Delete All" = "حذف الكل";
+"Search by name, company..." = "البحث بالاسم، الشركة...";
+"All" = "الكل";
+"Granted" = "مقبول";
+"Denied" = "مرفوض";
+"results" = "نتائج";
+"No Scans Yet" = "لا توجد عمليات مسح بعد";
+"No Results" = "لا توجد نتائج";
+"Scan history will appear here after your first QR code scan." = "سيظهر سجل المسح هنا بعد أول عملية مسح لرمز QR.";
+"Try adjusting your search or filter." = "حاول تعديل البحث أو الفلتر.";
+
+/* Login / Site Selection */
+"Guard Login" = "تسجيل دخول الحارس";
+"CAMS Scanner" = "ماسح CAMS";
+"Sign In" = "تسجيل الدخول";
+"Select Site" = "اختر الموقع";
+"Search sites..." = "البحث في المواقع...";
+"Camera Permission Required" = "إذن الكاميرا مطلوب";
+"This app needs camera access to scan QR codes. Please grant camera permission to continue." = "يحتاج هذا التطبيق إلى إذن الكاميرا لمسح رموز QR. يرجى منح إذن الكاميرا للمتابعة.";
+"Grant Permission" = "منح الإذن";
+"Change Site" = "تغيير الموقع";
+"Logout" = "تسجيل الخروج";
+"Menu" = "القائمة";
