@@ -55,6 +55,7 @@ class SessionManager: ObservableObject {
         KeychainHelper.delete(key: KeychainKey.guardName)
         KeychainHelper.delete(key: KeychainKey.scannerID)
         KeychainHelper.delete(key: KeychainKey.assignedSiteJSON)
+        KeychainHelper.delete(key: "hmac_signing_key")
 
         isAuthenticated = false
         guardName = ""

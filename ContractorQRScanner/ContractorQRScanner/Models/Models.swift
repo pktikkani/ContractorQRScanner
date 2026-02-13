@@ -2,7 +2,6 @@ import Foundation
 
 struct AppConfig {
     static let apiBaseURL = "https://contractor-api.nubewired.com"
-    static let hmacSigningKey = "79637086458312d462af0a0eb9f5c1d543f49742e28f8e"
 }
 
 struct ValidationResponse: Codable {
@@ -56,12 +55,14 @@ struct GuardLoginResponse: Codable {
     let guardName: String
     let scannerID: String
     let assignedSite: ScannerSiteInfo?
+    let hmacKey: String
 
     enum CodingKeys: String, CodingKey {
         case token
         case guardName = "guard_name"
         case scannerID = "scanner_id"
         case assignedSite = "assigned_site"
+        case hmacKey = "hmac_key"
     }
 }
 

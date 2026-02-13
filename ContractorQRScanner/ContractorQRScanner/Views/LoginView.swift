@@ -230,6 +230,9 @@ struct LoginView: View {
                 }
 
                 await MainActor.run {
+                    // Store HMAC key before other calls so subsequent requests are signed
+                    KeychainHelper.save(key: "hmac_signing_key", value: response.hmacKey)
+
                     session.saveLogin(
                         token: response.token,
                         guardName: response.guardName,
