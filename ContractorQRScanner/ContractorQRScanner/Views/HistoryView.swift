@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HistoryView: View {
-    @State private var historyManager = ScanHistoryManager.shared
+    @StateObject private var historyManager = ScanHistoryManager.shared
     @State private var searchText = ""
     @State private var filterResult: String? = nil
     @State private var showClearConfirmation = false
@@ -50,11 +50,11 @@ struct HistoryView: View {
                 RoundedRectangle(cornerRadius: 14)
                     .fill(AppTheme.primaryGradient)
                     .frame(width: 48, height: 48)
-                    .shadow(color: AppTheme.primary.opacity(0.5), radius: 10)
+                    .shadow(color: AppTheme.primaryShadow, radius: 10)
 
                 Image(systemName: "clock.arrow.circlepath")
                     .font(.title2.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textOnPrimary)
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -79,7 +79,7 @@ struct HistoryView: View {
                         .padding(10)
                         .background(
                             Circle()
-                                .fill(AppTheme.danger.opacity(0.15))
+                                .fill(AppTheme.danger.opacity(0.10))
                         )
                 }
                 .accessibilityLabel("Clear history")
@@ -127,8 +127,9 @@ struct HistoryView: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(AppTheme.cardBackground)
+                    .shadow(color: AppTheme.cardShadow, radius: 8, y: 4)
             )
             .padding(.horizontal, 20)
 
@@ -206,7 +207,7 @@ struct ScanLogRow: View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill((isGranted ? AppTheme.success : AppTheme.danger).opacity(0.15))
+                    .fill((isGranted ? AppTheme.success : AppTheme.danger).opacity(0.10))
                     .frame(width: 40, height: 40)
 
                 Image(systemName: isGranted ? "checkmark.shield.fill" : "xmark.shield.fill")
@@ -216,10 +217,24 @@ struct ScanLogRow: View {
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.contractorName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(AppTheme.textPrimary)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.contractorName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(AppTheme.textPrimary)
+                        .lineLimit(1)
+
+                    if let mode = entry.scanMode {
+                        Text(mode == "entry" ? "Entry" : "Exit")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(mode == "entry" ? AppTheme.success : AppTheme.danger)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                Capsule()
+                                    .fill((mode == "entry" ? AppTheme.success : AppTheme.danger).opacity(0.10))
+                            )
+                    }
+                }
 
                 HStack(spacing: 6) {
                     if let company = entry.company {
@@ -238,7 +253,7 @@ struct ScanLogRow: View {
                     if let reason = entry.reason, !isGranted {
                         Text(reason)
                             .font(.caption)
-                            .foregroundColor(AppTheme.danger.opacity(0.8))
+                            .foregroundColor(AppTheme.danger)
                             .lineLimit(1)
                     }
                 }
@@ -254,7 +269,7 @@ struct ScanLogRow: View {
                     .padding(.vertical, 3)
                     .background(
                         Capsule()
-                            .fill((isGranted ? AppTheme.success : AppTheme.danger).opacity(0.15))
+                            .fill((isGranted ? AppTheme.success : AppTheme.danger).opacity(0.10))
                     )
 
                 Text(entry.timestamp, style: .time)
@@ -270,18 +285,12 @@ struct ScanLogRow: View {
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 14)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(AppTheme.cardBackground)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .strokeBorder(
-                            (isGranted ? AppTheme.success : AppTheme.danger).opacity(0.1),
-                            lineWidth: 1
-                        )
-                )
+                .shadow(color: AppTheme.cardShadow, radius: 8, y: 3)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(entry.contractorName), \(isGranted ? "Granted" : "Denied")\(entry.company.map { ", \($0)" } ?? "")\(!isGranted && entry.reason != nil ? ", \(entry.reason!)" : "")")
+        .accessibilityLabel("\(entry.contractorName), \(isGranted ? "Granted" : "Denied")\(entry.scanMode.map { ", \($0 == "entry" ? "Entry" : "Exit")" } ?? "")\(entry.company.map { ", \($0)" } ?? "")\(!isGranted && entry.reason != nil ? ", \(entry.reason!)" : "")")
     }
 }
 
@@ -295,13 +304,14 @@ struct FilterChip: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(.caption.weight(.medium))
-                .foregroundColor(isSelected ? .white : AppTheme.textSecondary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(isSelected ? AppTheme.textOnPrimary : AppTheme.textSecondary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
                 .background(
                     Capsule()
-                        .fill(isSelected ? AppTheme.primary : AppTheme.cardBackground)
+                        .fill(isSelected ? AnyShapeStyle(AppTheme.primary) : AnyShapeStyle(AppTheme.cardBackground))
+                        .shadow(color: AppTheme.cardShadow, radius: 4, y: 3)
                 )
         }
         .accessibilityLabel("Filter: \(label)")

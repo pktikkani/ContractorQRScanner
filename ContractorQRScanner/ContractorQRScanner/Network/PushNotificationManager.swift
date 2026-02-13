@@ -138,26 +138,23 @@ extension PushNotificationManager: UNUserNotificationCenterDelegate {
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         let userInfo = response.notification.request.content.userInfo
+        let type = userInfo["type"] as? String
+        let alertInfo: [String: String]? = userInfo as? [String: String]
 
-        if let type = userInfo["type"] as? String {
+        if let type {
             Task { @MainActor in
-                handleNotificationAction(type: type, userInfo: userInfo)
+                switch type {
+                case "site_assignment":
+                    NotificationCenter.default.post(name: .siteAssignmentChanged, object: nil)
+                case "scanner_alert":
+                    NotificationCenter.default.post(name: .scannerAlert, object: nil, userInfo: alertInfo)
+                default:
+                    break
+                }
             }
         }
 
         completionHandler()
-    }
-
-    @MainActor
-    private func handleNotificationAction(type: String, userInfo: [AnyHashable: Any]) {
-        switch type {
-        case "site_assignment":
-            NotificationCenter.default.post(name: .siteAssignmentChanged, object: nil)
-        case "scanner_alert":
-            NotificationCenter.default.post(name: .scannerAlert, object: nil, userInfo: userInfo as? [String: Any])
-        default:
-            break
-        }
     }
 }
 

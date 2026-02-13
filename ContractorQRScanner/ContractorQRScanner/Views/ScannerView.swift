@@ -1,15 +1,16 @@
 import SwiftUI
+import PostHog
 
 struct ScannerView: View {
     @State private var scanState: ScanState = .scanning
     @State private var validationResult: ValidationResponse?
     @State private var errorMessage: String?
     @State private var scannerActive = true
+    @State private var cameraState: CameraState = .initializing
     @State private var scanMode: String = "entry" // "entry" or "exit"
     @StateObject private var networkMonitor = NetworkMonitor.shared
     @State private var showEmergencyOverride = false
-    @State private var overrideReason = ""
-    @State private var overrideGranted = false
+    @State private var lastScannedCode = ""
     @ObservedObject private var languageManager = LanguageManager.shared
 
     enum ScanState {
@@ -29,32 +30,42 @@ struct ScannerView: View {
 
                 // Entry/Exit mode toggle
                 HStack(spacing: 0) {
-                    Button(action: { scanMode = "entry" }) {
+                    Button(action: { withAnimation(.easeInOut(duration: 0.2)) { scanMode = "entry" } }) {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.right.circle.fill")
                             Text("Entry")
                                 .font(.subheadline.weight(.semibold))
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(scanMode == "entry" ? AppTheme.success : Color.clear)
-                        .foregroundColor(scanMode == "entry" ? .white : AppTheme.textSecondary)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(scanMode == "entry" ? AppTheme.success : Color.clear)
+                                .padding(3)
+                        )
+                        .foregroundColor(scanMode == "entry" ? AppTheme.textOnPrimary : AppTheme.textSecondary)
                     }
 
-                    Button(action: { scanMode = "exit" }) {
+                    Button(action: { withAnimation(.easeInOut(duration: 0.2)) { scanMode = "exit" } }) {
                         HStack(spacing: 6) {
                             Image(systemName: "arrow.left.circle.fill")
                             Text("Exit")
                                 .font(.subheadline.weight(.semibold))
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(scanMode == "exit" ? AppTheme.danger : Color.clear)
-                        .foregroundColor(scanMode == "exit" ? .white : AppTheme.textSecondary)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(scanMode == "exit" ? AppTheme.danger : Color.clear)
+                                .padding(3)
+                        )
+                        .foregroundColor(scanMode == "exit" ? AppTheme.textOnPrimary : AppTheme.textSecondary)
                     }
                 }
-                .background(AppTheme.cardBackground)
-                .cornerRadius(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(AppTheme.surfaceBackground)
+                )
                 .padding(.horizontal, 20)
                 .padding(.bottom, 8)
                 .accessibilityElement(children: .contain)
@@ -101,10 +112,17 @@ struct ScannerView: View {
                             .font(.subheadline.weight(.semibold))
                     }
                     .foregroundColor(AppTheme.warning)
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 20)
-                    .background(AppTheme.warning.opacity(0.1))
-                    .cornerRadius(10)
+                    .padding(.vertical, 12)
+                    .padding(.horizontal, 24)
+                    .background(
+                        Capsule()
+                            .fill(AppTheme.cardBackground)
+                            .shadow(color: AppTheme.cardShadow, radius: 8, y: 4)
+                    )
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(AppTheme.warning.opacity(0.3), lineWidth: 1)
+                    )
                 }
                 .padding(.bottom, 16)
                 .accessibilityLabel("Emergency Override")
@@ -121,7 +139,8 @@ struct ScannerView: View {
                         company: nil,
                         email: nil,
                         result: granted ? "granted" : "denied",
-                        reason: "OVERRIDE: \(reason)"
+                        reason: "OVERRIDE: \(reason)",
+                        scanMode: scanMode
                     )
                     ScanHistoryManager.shared.addEntry(entry)
                     showEmergencyOverride = false
@@ -139,11 +158,11 @@ struct ScannerView: View {
                 RoundedRectangle(cornerRadius: 14)
                     .fill(AppTheme.primaryGradient)
                     .frame(width: 48, height: 48)
-                    .shadow(color: AppTheme.primary.opacity(0.5), radius: 10)
+                    .shadow(color: AppTheme.primaryShadow, radius: 10)
 
                 Image(systemName: "qrcode.viewfinder")
                     .font(.title2.weight(.semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textOnPrimary)
             }
             .accessibilityHidden(true)
 
@@ -163,7 +182,6 @@ struct ScannerView: View {
                 Circle()
                     .fill(scanState == .scanning ? AppTheme.success : AppTheme.primary)
                     .frame(width: 8, height: 8)
-                    .shadow(color: (scanState == .scanning ? AppTheme.success : AppTheme.primary).opacity(0.8), radius: 4)
                     .accessibilityHidden(true)
 
                 Text(scanState == .scanning ? "Ready" : "Busy")
@@ -174,7 +192,7 @@ struct ScannerView: View {
             .padding(.vertical, 6)
             .background(
                 Capsule()
-                    .fill((scanState == .scanning ? AppTheme.success : AppTheme.primary).opacity(0.15))
+                    .fill((scanState == .scanning ? AppTheme.success : AppTheme.primary).opacity(0.12))
             )
             .accessibilityLabel("Scanner status: \(scanState == .scanning ? "Ready" : "Busy")")
 
@@ -185,9 +203,9 @@ struct ScannerView: View {
             }) {
                 Text(languageManager.isArabic ? "EN" : "AR")
                     .font(.caption2.weight(.bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textOnPrimary)
                     .frame(width: 36, height: 28)
-                    .background(AppTheme.primaryGradient)
+                    .background(AppTheme.primary)
                     .cornerRadius(8)
             }
             .accessibilityLabel("Switch language")
@@ -203,36 +221,120 @@ struct ScannerView: View {
         VStack(spacing: 16) {
             ZStack {
                 if scannerActive {
-                    QRScannerCamera { code in
-                        handleScannedCode(code)
-                    }
+                    QRScannerCamera(
+                        onCodeScanned: { code in
+                            handleScannedCode(code)
+                        },
+                        onStateChanged: { state in
+                            cameraState = state
+                        }
+                    )
                 }
 
-                scanFrameOverlay
+                switch cameraState {
+                case .initializing:
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .tint(.white)
+                        Text("Starting camera...")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.black)
+
+                case .permissionDenied:
+                    cameraPermissionView
+
+                case .failed(let message):
+                    cameraErrorView(message: message)
+
+                case .running:
+                    scanFrameOverlay
+                }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.cornerRadius))
+            .shadow(color: AppTheme.cardShadow, radius: 20, y: 8)
             .padding(.horizontal, 20)
 
-            HStack(spacing: 10) {
-                Image(systemName: "viewfinder")
-                    .foregroundColor(AppTheme.primary)
+            if cameraState == .running {
+                HStack(spacing: 10) {
+                    Image(systemName: "viewfinder")
+                        .foregroundColor(AppTheme.primary)
 
-                Text("Position QR code within the frame")
-                    .font(.subheadline)
-                    .foregroundColor(AppTheme.textSecondary)
+                    Text("Position QR code within the frame")
+                        .font(.subheadline)
+                        .foregroundColor(AppTheme.textSecondary)
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 20)
+                .background(
+                    RoundedRectangle(cornerRadius: 14)
+                        .fill(AppTheme.cardBackground)
+                        .shadow(color: AppTheme.cardShadow, radius: 10, y: 4)
+                )
+                .padding(.horizontal, 20)
             }
-            .padding(.vertical, 12)
-            .padding(.horizontal, 20)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(AppTheme.cardBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(AppTheme.primary.opacity(0.2), lineWidth: 1)
-                    )
-            )
-            .padding(.horizontal, 20)
         }
+    }
+
+    private var cameraPermissionView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "camera.fill")
+                .font(.system(size: 48))
+                .foregroundColor(AppTheme.warning)
+
+            Text("Camera Access Required")
+                .font(.title3.weight(.bold))
+                .foregroundColor(.white)
+
+            Text("Camera permission is needed to scan QR codes. Please enable it in Settings.")
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+
+            Button(action: {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }) {
+                Text("Open Settings")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(AppTheme.textOnPrimary)
+                    .padding(.horizontal, 28)
+                    .padding(.vertical, 12)
+                    .background(AppTheme.primaryGradient)
+                    .cornerRadius(12)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Camera permission required. Open Settings to enable camera access.")
+    }
+
+    private func cameraErrorView(message: String) -> some View {
+        VStack(spacing: 20) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 48))
+                .foregroundColor(AppTheme.danger)
+
+            Text("Camera Unavailable")
+                .font(.title3.weight(.bold))
+                .foregroundColor(.white)
+
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Camera error: \(message)")
     }
 
     private var scanFrameOverlay: some View {
@@ -289,11 +391,11 @@ struct ScannerView: View {
 
             ZStack {
                 Circle()
-                    .fill(AppTheme.primary.opacity(0.1))
+                    .fill(AppTheme.primary.opacity(0.08))
                     .frame(width: 120, height: 120)
 
                 Circle()
-                    .fill(AppTheme.primary.opacity(0.2))
+                    .fill(AppTheme.primary.opacity(0.15))
                     .frame(width: 90, height: 90)
 
                 ProgressView()
@@ -332,17 +434,17 @@ struct ScannerView: View {
         VStack(spacing: 24) {
             ZStack {
                 Circle()
-                    .fill(AppTheme.success.opacity(0.15))
+                    .fill(AppTheme.success.opacity(0.10))
                     .frame(width: 160, height: 160)
 
                 Circle()
                     .fill(AppTheme.successGradient)
                     .frame(width: 120, height: 120)
-                    .shadow(color: AppTheme.success.opacity(0.6), radius: 30)
+                    .shadow(color: AppTheme.success.opacity(0.3), radius: 20)
 
                 Image(systemName: "checkmark")
                     .font(.system(size: 56, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textOnPrimary)
             }
 
             Text("ACCESS GRANTED")
@@ -377,7 +479,7 @@ struct ScannerView: View {
                                         Circle()
                                             .strokeBorder(AppTheme.success, lineWidth: 3)
                                     )
-                                    .shadow(color: AppTheme.success.opacity(0.4), radius: 10)
+                                    .shadow(color: AppTheme.success.opacity(0.2), radius: 10)
 
                                 ZStack {
                                     Circle()
@@ -386,7 +488,7 @@ struct ScannerView: View {
 
                                     Image(systemName: "checkmark")
                                         .font(.caption.weight(.bold))
-                                        .foregroundColor(.white)
+                                        .foregroundColor(AppTheme.textOnPrimary)
                                 }
                             }
                         }
@@ -428,10 +530,11 @@ struct ScannerView: View {
                 .background(
                     RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
                         .fill(AppTheme.cardBackground)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
-                                .strokeBorder(AppTheme.success.opacity(0.3), lineWidth: 1)
-                        )
+                        .shadow(color: AppTheme.success.opacity(0.10), radius: 16, y: 6)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.cornerRadius)
+                        .strokeBorder(AppTheme.success.opacity(0.2), lineWidth: 1)
                 )
                 .padding(.horizontal, 20)
             }
@@ -448,17 +551,17 @@ struct ScannerView: View {
 
             ZStack {
                 Circle()
-                    .fill(AppTheme.danger.opacity(0.15))
+                    .fill(AppTheme.danger.opacity(0.10))
                     .frame(width: 160, height: 160)
 
                 Circle()
                     .fill(AppTheme.dangerGradient)
                     .frame(width: 120, height: 120)
-                    .shadow(color: AppTheme.danger.opacity(0.6), radius: 30)
+                    .shadow(color: AppTheme.danger.opacity(0.3), radius: 20)
 
                 Image(systemName: "xmark")
                     .font(.system(size: 56, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.textOnPrimary)
             }
 
             Text("ACCESS DENIED")
@@ -469,16 +572,16 @@ struct ScannerView: View {
             if let reason = result.reason {
                 Text(reason)
                     .font(.body.weight(.medium))
-                    .foregroundColor(AppTheme.danger.opacity(0.8))
+                    .foregroundColor(AppTheme.danger)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                     .padding(.vertical, 16)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(AppTheme.danger.opacity(0.1))
+                            .fill(AppTheme.danger.opacity(0.08))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 12)
-                                    .strokeBorder(AppTheme.danger.opacity(0.3), lineWidth: 1)
+                                    .strokeBorder(AppTheme.danger.opacity(0.2), lineWidth: 1)
                             )
                     )
                     .padding(.horizontal, 20)
@@ -498,11 +601,12 @@ struct ScannerView: View {
                 Text("Scan Next")
             }
             .font(.headline)
-            .foregroundColor(.white)
+            .foregroundColor(AppTheme.textOnPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
-            .background(AppTheme.primaryGradient)
-            .cornerRadius(14)
+            .background(AppTheme.primary)
+            .cornerRadius(16)
+            .shadow(color: AppTheme.primaryShadow, radius: 12, y: 6)
         }
         .accessibilityLabel("Scan Next")
         .accessibilityHint("Double tap to scan another QR code")
@@ -518,7 +622,7 @@ struct ScannerView: View {
 
             ZStack {
                 Circle()
-                    .fill(AppTheme.warning.opacity(0.15))
+                    .fill(AppTheme.warning.opacity(0.10))
                     .frame(width: 120, height: 120)
 
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -548,11 +652,12 @@ struct ScannerView: View {
                     Text("Try Again")
                 }
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(AppTheme.textOnPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(AppTheme.primaryGradient)
-                .cornerRadius(14)
+                .background(AppTheme.primary)
+                .cornerRadius(16)
+                .shadow(color: AppTheme.primaryShadow, radius: 12, y: 6)
             }
             .accessibilityLabel("Try Again")
             .accessibilityHint("Double tap to retry scanning")
@@ -563,8 +668,43 @@ struct ScannerView: View {
 
     // MARK: - Actions
 
+    /// Max QR age (seconds) before scanner blocks locally without hitting API
+    private static let maxQRAgeAtScan: TimeInterval = 60
+
     private func handleScannedCode(_ code: String) {
+        // Skip if same QR code scanned again (already validated/expired)
+        guard code != lastScannedCode else { return }
+        lastScannedCode = code
         scannerActive = false
+
+        // Local stale precheck — decode QR timestamp and block if too old
+        if let payloadData = Data(base64Encoded: code),
+           let json = try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any],
+           let ts = json["timestamp"] as? Int64 {
+            let qrAge = Date().timeIntervalSince1970 - TimeInterval(ts)
+            if qrAge > Self.maxQRAgeAtScan {
+                PostHogSDK.shared.capture("stale_blocked_locally", properties: [
+                    "qr_age_seconds": Int(qrAge),
+                    "threshold_seconds": Int(Self.maxQRAgeAtScan),
+                    "app": "scanner"
+                ])
+                PostHogSDK.shared.flush()
+
+                validationResult = ValidationResponse(
+                    status: "denied",
+                    contractor: nil,
+                    reason: "QR code is stale (\(Int(qrAge))s old). Ask the contractor to refresh their QR code."
+                )
+                scanState = .result
+
+                Task {
+                    try? await Task.sleep(nanoseconds: 8_000_000_000)
+                    if scanState == .result { resetScanner() }
+                }
+                return
+            }
+        }
+
         scanState = .validating
 
         Task {
@@ -582,7 +722,7 @@ struct ScannerView: View {
                 }
 
                 // Save to scan history
-                let historyEntry = ScanHistoryEntry(from: result)
+                let historyEntry = ScanHistoryEntry(from: result, scanMode: scanMode)
                 ScanHistoryManager.shared.addEntry(historyEntry)
 
                 // Auto-reset after 8 seconds
@@ -596,7 +736,7 @@ struct ScannerView: View {
                     validationResult = offlineResult
                     scanState = .result
 
-                    let historyEntry = ScanHistoryEntry(from: offlineResult)
+                    let historyEntry = ScanHistoryEntry(from: offlineResult, scanMode: scanMode)
                     ScanHistoryManager.shared.addEntry(historyEntry)
 
                     try? await Task.sleep(nanoseconds: 8_000_000_000)
@@ -621,6 +761,8 @@ struct ScannerView: View {
             scanState = .scanning
             validationResult = nil
             errorMessage = nil
+            lastScannedCode = ""
+            cameraState = .initializing
             scannerActive = true
         }
     }
@@ -637,7 +779,7 @@ struct DetailRow: View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(AppTheme.primary.opacity(0.15))
+                    .fill(AppTheme.primary.opacity(0.10))
                     .frame(width: 36, height: 36)
 
                 Image(systemName: icon)
@@ -705,7 +847,7 @@ struct EmergencyOverrideSheet: View {
                         // Warning icon
                         ZStack {
                             Circle()
-                                .fill(AppTheme.warning.opacity(0.15))
+                                .fill(AppTheme.warning.opacity(0.10))
                                 .frame(width: 80, height: 80)
 
                             Image(systemName: "exclamationmark.shield.fill")
@@ -738,7 +880,7 @@ struct EmergencyOverrideSheet: View {
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .strokeBorder(AppTheme.primary.opacity(0.3), lineWidth: 1)
+                                        .strokeBorder(AppTheme.secondary, lineWidth: 1)
                                 )
                                 .foregroundColor(AppTheme.textPrimary)
                         }
@@ -754,11 +896,12 @@ struct EmergencyOverrideSheet: View {
                                     Text("Grant Access")
                                 }
                                 .font(.headline)
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.textOnPrimary)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
                                 .background(AppTheme.success)
                                 .cornerRadius(14)
+                                .shadow(color: AppTheme.success.opacity(0.25), radius: 10, y: 4)
                             }
                             .disabled(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             .opacity(reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
@@ -771,7 +914,7 @@ struct EmergencyOverrideSheet: View {
                                     Text("Deny Access")
                                 }
                                 .font(.headline)
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.textOnPrimary)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 16)
                                 .background(AppTheme.danger)

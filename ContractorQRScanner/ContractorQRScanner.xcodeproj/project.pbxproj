@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		8B0764052F3EE53D002E29C2 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 8B0764042F3EE53D002E29C2 /* PostHog */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		8B2DD4902F3B5CF600B747F8 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8B0764052F3EE53D002E29C2 /* PostHog in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = ContractorQRScanner;
 			packageProductDependencies = (
+				8B0764042F3EE53D002E29C2 /* PostHog */,
 			);
 			productName = ContractorQRScanner;
 			productReference = 8B2DD4822F3B5CF500B747F8 /* ContractorQRScanner.app */;
@@ -192,9 +198,13 @@
 			knownRegions = (
 				en,
 				Base,
+				ar,
 			);
 			mainGroup = 8B2DD4792F3B5CF500B747F8;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				8B0764032F3EE53D002E29C2 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 8B2DD4832F3B5CF500B747F8 /* Products */;
 			projectDirPath = "";
@@ -580,6 +590,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		8B0764032F3EE53D002E29C2 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/PostHog/posthog-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.41.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		8B0764042F3EE53D002E29C2 /* PostHog */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8B0764032F3EE53D002E29C2 /* XCRemoteSwiftPackageReference "posthog-ios" */;
+			productName = PostHog;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8B2DD47A2F3B5CF500B747F8 /* Project object */;
 }

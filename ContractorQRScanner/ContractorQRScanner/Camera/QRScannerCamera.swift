@@ -1,11 +1,19 @@
 import SwiftUI
 @preconcurrency import AVFoundation
 
+enum CameraState: Equatable {
+    case initializing
+    case running
+    case permissionDenied
+    case failed(String)
+}
+
 struct QRScannerCamera: UIViewRepresentable {
     let onCodeScanned: @MainActor (String) -> Void
+    let onStateChanged: @MainActor (CameraState) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onCodeScanned: onCodeScanned)
+        Coordinator(onCodeScanned: onCodeScanned, onStateChanged: onStateChanged)
     }
 
     @MainActor
@@ -16,36 +24,30 @@ struct QRScannerCamera: UIViewRepresentable {
         let coordinator = context.coordinator
 
         DispatchQueue.global(qos: .userInitiated).async {
-            let session = AVCaptureSession()
-            session.sessionPreset = .high
-            coordinator.session = session
+            // Check camera permission first
+            let status = AVCaptureDevice.authorizationStatus(for: .video)
+            switch status {
+            case .authorized:
+                coordinator.setupSession(in: view)
 
-            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-                  let input = try? AVCaptureDeviceInput(device: device) else {
-                return
+            case .notDetermined:
+                AVCaptureDevice.requestAccess(for: .video) { granted in
+                    if granted {
+                        coordinator.setupSession(in: view)
+                    } else {
+                        let cb = coordinator.onStateChanged
+                        DispatchQueue.main.async { cb(.permissionDenied) }
+                    }
+                }
+
+            case .denied, .restricted:
+                let cb = coordinator.onStateChanged
+                DispatchQueue.main.async { cb(.permissionDenied) }
+
+            @unknown default:
+                let cb = coordinator.onStateChanged
+                DispatchQueue.main.async { cb(.failed("Unknown camera authorization status")) }
             }
-
-            if session.canAddInput(input) {
-                session.addInput(input)
-            }
-
-            let output = AVCaptureMetadataOutput()
-            if session.canAddOutput(output) {
-                session.addOutput(output)
-                output.setMetadataObjectsDelegate(coordinator, queue: .main)
-                output.metadataObjectTypes = [.qr]
-            }
-
-            let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-            previewLayer.videoGravity = .resizeAspectFill
-            coordinator.previewLayer = previewLayer
-
-            DispatchQueue.main.async {
-                previewLayer.frame = view.bounds
-                view.layer.addSublayer(previewLayer)
-            }
-
-            session.startRunning()
         }
 
         return view
@@ -58,22 +60,73 @@ struct QRScannerCamera: UIViewRepresentable {
 
     @MainActor
     static func dismantleUIView(_ uiView: UIView, coordinator: Coordinator) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            coordinator.session?.stopRunning()
-        }
-        coordinator.previewLayer?.removeFromSuperlayer()
+        let session = coordinator.session
+        let previewLayer = coordinator.previewLayer
         coordinator.session = nil
         coordinator.previewLayer = nil
+        previewLayer?.removeFromSuperlayer()
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard let session = session, session.isRunning else { return }
+            session.stopRunning()
+        }
     }
 
     class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
         nonisolated(unsafe) var onCodeScanned: (@MainActor (String) -> Void)
+        nonisolated(unsafe) var onStateChanged: (@MainActor (CameraState) -> Void)
         nonisolated(unsafe) var session: AVCaptureSession?
         nonisolated(unsafe) var previewLayer: AVCaptureVideoPreviewLayer?
         nonisolated(unsafe) var lastScannedTime: Date = .distantPast
+        let metadataQueue = DispatchQueue(label: "com.pragmatic.scanner.metadata")
 
-        init(onCodeScanned: @escaping @MainActor (String) -> Void) {
+        init(
+            onCodeScanned: @escaping @MainActor (String) -> Void,
+            onStateChanged: @escaping @MainActor (CameraState) -> Void
+        ) {
             self.onCodeScanned = onCodeScanned
+            self.onStateChanged = onStateChanged
+        }
+
+        func setupSession(in view: UIView) {
+            let session = AVCaptureSession()
+            session.sessionPreset = .high
+            self.session = session
+
+            guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+                let cb = onStateChanged
+                DispatchQueue.main.async { cb(.failed("No camera available")) }
+                return
+            }
+
+            guard let input = try? AVCaptureDeviceInput(device: device) else {
+                let cb = onStateChanged
+                DispatchQueue.main.async { cb(.failed("Cannot access camera")) }
+                return
+            }
+
+            if session.canAddInput(input) {
+                session.addInput(input)
+            }
+
+            let output = AVCaptureMetadataOutput()
+            if session.canAddOutput(output) {
+                session.addOutput(output)
+                output.setMetadataObjectsDelegate(self, queue: metadataQueue)
+                output.metadataObjectTypes = [.qr]
+            }
+
+            let previewLayer = AVCaptureVideoPreviewLayer(session: session)
+            previewLayer.videoGravity = .resizeAspectFill
+            self.previewLayer = previewLayer
+
+            let stateCb = onStateChanged
+            DispatchQueue.main.async {
+                previewLayer.frame = view.bounds
+                view.layer.addSublayer(previewLayer)
+                stateCb(.running)
+            }
+
+            session.startRunning()
         }
 
         nonisolated func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
