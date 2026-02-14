@@ -35,18 +35,15 @@ struct QRScannerCamera: UIViewRepresentable {
                     if granted {
                         coordinator.setupSession(in: view)
                     } else {
-                        let cb = coordinator.onStateChanged
-                        DispatchQueue.main.async { cb(.permissionDenied) }
+                        Task { @MainActor in coordinator.onStateChanged(.permissionDenied) }
                     }
                 }
 
             case .denied, .restricted:
-                let cb = coordinator.onStateChanged
-                DispatchQueue.main.async { cb(.permissionDenied) }
+                Task { @MainActor in coordinator.onStateChanged(.permissionDenied) }
 
             @unknown default:
-                let cb = coordinator.onStateChanged
-                DispatchQueue.main.async { cb(.failed("Unknown camera authorization status")) }
+                Task { @MainActor in coordinator.onStateChanged(.failed("Unknown camera authorization status")) }
             }
         }
 
@@ -72,11 +69,12 @@ struct QRScannerCamera: UIViewRepresentable {
     }
 
     class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate {
-        nonisolated(unsafe) var onCodeScanned: (@MainActor (String) -> Void)
-        nonisolated(unsafe) var onStateChanged: (@MainActor (CameraState) -> Void)
+        let onCodeScanned: @MainActor (String) -> Void
+        let onStateChanged: @MainActor (CameraState) -> Void
         nonisolated(unsafe) var session: AVCaptureSession?
         nonisolated(unsafe) var previewLayer: AVCaptureVideoPreviewLayer?
-        nonisolated(unsafe) var lastScannedTime: Date = .distantPast
+        private let scanLock = NSLock()
+        nonisolated(unsafe) private var _lastScannedTime: Date = .distantPast
         let metadataQueue = DispatchQueue(label: "com.pragmatic.scanner.metadata")
 
         init(
@@ -93,14 +91,12 @@ struct QRScannerCamera: UIViewRepresentable {
             self.session = session
 
             guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
-                let cb = onStateChanged
-                DispatchQueue.main.async { cb(.failed("No camera available")) }
+                Task { @MainActor in onStateChanged(.failed("No camera available")) }
                 return
             }
 
             guard let input = try? AVCaptureDeviceInput(device: device) else {
-                let cb = onStateChanged
-                DispatchQueue.main.async { cb(.failed("Cannot access camera")) }
+                Task { @MainActor in onStateChanged(.failed("Cannot access camera")) }
                 return
             }
 
@@ -119,25 +115,29 @@ struct QRScannerCamera: UIViewRepresentable {
             previewLayer.videoGravity = .resizeAspectFill
             self.previewLayer = previewLayer
 
-            let stateCb = onStateChanged
+            let stateCallback = onStateChanged
             DispatchQueue.main.async {
                 previewLayer.frame = view.bounds
                 view.layer.addSublayer(previewLayer)
-                stateCb(.running)
+                Task { @MainActor in stateCallback(.running) }
             }
 
             session.startRunning()
         }
 
         nonisolated func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-            guard Date().timeIntervalSince(lastScannedTime) > 2 else { return }
+            let now = Date()
+            let shouldProcess: Bool = scanLock.withLock {
+                guard now.timeIntervalSince(_lastScannedTime) > 2 else { return false }
+                _lastScannedTime = now
+                return true
+            }
+            guard shouldProcess else { return }
 
             guard let object = metadataObjects.first as? AVMetadataMachineReadableCodeObject,
                   object.type == .qr,
                   let value = object.stringValue,
                   !value.isEmpty else { return }
-
-            lastScannedTime = Date()
 
             let callback = onCodeScanned
             DispatchQueue.main.async {

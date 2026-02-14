@@ -11,7 +11,7 @@ class APIClient {
         // Use authenticated scanner/validate if we have a token, else legacy qr/validate
         let token = SessionManager.shared.token
         let endpoint = token != nil ? "/api/v1/scanner/validate" : "/api/v1/qr/validate"
-        let url = URL(string: "\(baseURL)\(endpoint)")!
+        guard let url = URL(string: "\(baseURL)\(endpoint)") else { throw APIError.invalidURL }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -138,7 +138,7 @@ class APIClient {
     // MARK: - Scanner Login
 
     func scannerLogin(email: String, password: String) async throws -> GuardLoginResponse {
-        let url = URL(string: "\(baseURL)/api/v1/scanner/login")!
+        guard let url = URL(string: "\(baseURL)/api/v1/scanner/login") else { throw APIError.invalidURL }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -169,7 +169,7 @@ class APIClient {
     // MARK: - List Sites
 
     func listSites(token: String) async throws -> [SiteItem] {
-        let url = URL(string: "\(baseURL)/api/v1/scanner/sites")!
+        guard let url = URL(string: "\(baseURL)/api/v1/scanner/sites") else { throw APIError.invalidURL }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 10
@@ -187,7 +187,7 @@ class APIClient {
     // MARK: - Assign Site
 
     func assignSite(token: String, siteID: String) async throws {
-        let url = URL(string: "\(baseURL)/api/v1/scanner/assign-site")!
+        guard let url = URL(string: "\(baseURL)/api/v1/scanner/assign-site") else { throw APIError.invalidURL }
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -207,7 +207,7 @@ class APIClient {
     // MARK: - Offline Bundle
 
     func fetchOfflineBundle(token: String) async throws -> OfflineBundleResponse {
-        let url = URL(string: "\(baseURL)/api/v1/scanner/offline-bundle")!
+        guard let url = URL(string: "\(baseURL)/api/v1/scanner/offline-bundle") else { throw APIError.invalidURL }
         var request = URLRequest(url: url)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.timeoutInterval = 30
@@ -250,6 +250,7 @@ enum DeviceFingerprint {
 }
 
 enum APIError: LocalizedError {
+    case invalidURL
     case invalidResponse
     case serverError(Int)
     case networkError
@@ -257,6 +258,8 @@ enum APIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
+        case .invalidURL:
+            return "Invalid API URL"
         case .invalidResponse:
             return "Invalid server response"
         case .serverError(let code):

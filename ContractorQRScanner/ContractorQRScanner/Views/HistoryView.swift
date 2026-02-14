@@ -62,7 +62,7 @@ struct HistoryView: View {
                     .font(.title2.weight(.bold))
                     .foregroundColor(AppTheme.textPrimary)
 
-                Text("\(historyManager.entries.count) scans recorded")
+                Text("\(historyManager.entries.count) \(NSLocalizedString("scans recorded", comment: ""))")
                     .font(.caption)
                     .foregroundColor(AppTheme.textSecondary)
             }
@@ -146,7 +146,7 @@ struct HistoryView: View {
 
                 Spacer()
 
-                Text("\(filteredEntries.count) results")
+                Text("\(filteredEntries.count) \(NSLocalizedString("results", comment: ""))")
                     .font(.caption)
                     .foregroundColor(AppTheme.textSecondary)
             }

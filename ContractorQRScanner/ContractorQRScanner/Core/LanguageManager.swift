@@ -10,11 +10,10 @@ class LanguageManager: ObservableObject {
             UserDefaults.standard.set(currentLanguage, forKey: "app_language")
             UserDefaults.standard.set([currentLanguage], forKey: "AppleLanguages")
             Bundle.setLanguage(currentLanguage)
-            objectWillChange.send()
         }
     }
 
-    init() {
+    private init() {
         let saved = UserDefaults.standard.string(forKey: "app_language") ?? "en"
         self.currentLanguage = saved
         Bundle.setLanguage(saved)

@@ -11,7 +11,8 @@ struct ScannerView: View {
     @StateObject private var networkMonitor = NetworkMonitor.shared
     @State private var showEmergencyOverride = false
     @State private var lastScannedCode = ""
-    @ObservedObject private var languageManager = LanguageManager.shared
+    @StateObject private var languageManager = LanguageManager.shared
+    @State private var autoResetTask: Task<Void, Never>?
 
     enum ScanState {
         case scanning
@@ -697,9 +698,10 @@ struct ScannerView: View {
                 )
                 scanState = .result
 
-                Task {
+                autoResetTask?.cancel()
+                autoResetTask = Task {
                     try? await Task.sleep(nanoseconds: 8_000_000_000)
-                    if scanState == .result { resetScanner() }
+                    if !Task.isCancelled, scanState == .result { resetScanner() }
                 }
                 return
             }
@@ -726,9 +728,10 @@ struct ScannerView: View {
                 ScanHistoryManager.shared.addEntry(historyEntry)
 
                 // Auto-reset after 8 seconds
-                try? await Task.sleep(nanoseconds: 8_000_000_000)
-                if scanState == .result {
-                    resetScanner()
+                autoResetTask?.cancel()
+                autoResetTask = Task {
+                    try? await Task.sleep(nanoseconds: 8_000_000_000)
+                    if !Task.isCancelled, scanState == .result { resetScanner() }
                 }
             } catch {
                 // Attempt offline validation before showing error
@@ -739,17 +742,19 @@ struct ScannerView: View {
                     let historyEntry = ScanHistoryEntry(from: offlineResult, scanMode: scanMode)
                     ScanHistoryManager.shared.addEntry(historyEntry)
 
-                    try? await Task.sleep(nanoseconds: 8_000_000_000)
-                    if scanState == .result {
-                        resetScanner()
+                    autoResetTask?.cancel()
+                    autoResetTask = Task {
+                        try? await Task.sleep(nanoseconds: 8_000_000_000)
+                        if !Task.isCancelled, scanState == .result { resetScanner() }
                     }
                 } else {
                     errorMessage = error.localizedDescription
                     scanState = .error
 
-                    try? await Task.sleep(nanoseconds: 5_000_000_000)
-                    if scanState == .error {
-                        resetScanner()
+                    autoResetTask?.cancel()
+                    autoResetTask = Task {
+                        try? await Task.sleep(nanoseconds: 5_000_000_000)
+                        if !Task.isCancelled, scanState == .error { resetScanner() }
                     }
                 }
             }
@@ -757,6 +762,8 @@ struct ScannerView: View {
     }
 
     private func resetScanner() {
+        autoResetTask?.cancel()
+        autoResetTask = nil
         withAnimation(.easeInOut(duration: 0.3)) {
             scanState = .scanning
             validationResult = nil
